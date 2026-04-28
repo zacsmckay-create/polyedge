@@ -18,30 +18,8 @@ app.config['SESSION_COOKIE_SECURE'] = False
 app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(hours=8)
 
 BASE_DIR      = os.path.dirname(__file__)
-ACCESS_FILE   = os.path.join(BASE_DIR, 'access_code.txt')
-ACCESS_CODE   = os.getenv('ACCESS_CODE')
 GAMMA_API     = 'https://gamma-api.polymarket.com'
 DATA_API      = 'https://data-api.polymarket.com'
-AUTH_ATTEMPTS = {}
-AUTH_LOCK_BASE_SECONDS = 30
-AUTH_MAX_FAILS = 5
-AUTH_WINDOW_SECONDS = 60 * 15
-
-
-def load_access_code():
-    """Load the local access code without baking a shared default into the app."""
-    global ACCESS_CODE
-    if ACCESS_CODE:
-        return ACCESS_CODE
-    if os.path.exists(ACCESS_FILE):
-        with open(ACCESS_FILE, encoding='utf-8') as f:
-            ACCESS_CODE = f.read().strip()
-            if ACCESS_CODE:
-                return ACCESS_CODE
-    ACCESS_CODE = 'polyedge-' + secrets.token_urlsafe(12)
-    with open(ACCESS_FILE, 'w', encoding='utf-8') as f:
-        f.write(ACCESS_CODE + '\n')
-    return ACCESS_CODE
 
 
 def require_auth(fn):
@@ -59,47 +37,6 @@ def is_wallet_address(value):
         return False
     return all(c in '0123456789abcdefABCDEF' for c in value[2:])
 
-
-def client_ip():
-    forwarded = request.headers.get('X-Forwarded-For', '')
-    if forwarded:
-        return forwarded.split(',')[0].strip()
-    return request.remote_addr or 'local'
-
-
-def _auth_state(ip):
-    now = time.time()
-    state = AUTH_ATTEMPTS.get(ip)
-    if not state:
-        state = {'fails': 0, 'first_fail_ts': now, 'lock_until': 0}
-        AUTH_ATTEMPTS[ip] = state
-        return state
-    if now - state.get('first_fail_ts', now) > AUTH_WINDOW_SECONDS:
-        state['fails'] = 0
-        state['first_fail_ts'] = now
-        state['lock_until'] = 0
-    return state
-
-
-def auth_locked(ip):
-    state = _auth_state(ip)
-    now = time.time()
-    if state.get('lock_until', 0) > now:
-        return int(state['lock_until'] - now)
-    return 0
-
-
-def record_auth_failure(ip):
-    state = _auth_state(ip)
-    state['fails'] += 1
-    if state['fails'] >= AUTH_MAX_FAILS:
-        multiplier = state['fails'] - AUTH_MAX_FAILS + 1
-        state['lock_until'] = time.time() + (AUTH_LOCK_BASE_SECONDS * multiplier)
-    AUTH_ATTEMPTS[ip] = state
-
-
-def record_auth_success(ip):
-    AUTH_ATTEMPTS.pop(ip, None)
 
 # ── In-memory stores ──────────────────────────────────────────────────────────
 saved_traders    = {}   # address → {name, added_at}
@@ -473,6 +410,8 @@ def send_telegram(token, chat_id, message):
 def index():
     from flask import make_response
     import os
+    session['authenticated'] = True
+    session.permanent = True
     path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'templates', 'index.html')
     with open(path, 'r', encoding='utf-8') as f:
         html = f.read()
@@ -499,18 +438,10 @@ def go_to_market():
 
 @app.route('/api/auth', methods=['POST'])
 def auth():
-    ip = client_ip()
-    wait_seconds = auth_locked(ip)
-    if wait_seconds > 0:
-        return jsonify({'ok': False, 'error': f'Too many attempts. Try again in {wait_seconds}s'}), 429
-    code = (request.json or {}).get('code', '').strip()
-    if code == load_access_code():
-        record_auth_success(ip)
-        session['authenticated'] = True
-        session.permanent = True
-        return jsonify({'ok': True})
-    record_auth_failure(ip)
-    return jsonify({'ok': False, 'error': 'Wrong access code'})
+    # Desktop-local mode: skip manual unlock and establish a local session.
+    session['authenticated'] = True
+    session.permanent = True
+    return jsonify({'ok': True})
 
 
 @app.route('/api/logout', methods=['POST'])
@@ -823,7 +754,6 @@ def manual_refresh():
 
 
 if __name__ == '__main__':
-    load_access_code()
     load_data()
     threading.Thread(target=refresh_all_stats, daemon=True).start()
     port = int(os.getenv('PORT', 5001))

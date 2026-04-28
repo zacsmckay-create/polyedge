@@ -9,19 +9,8 @@
 * { box-sizing: border-box; margin: 0; padding: 0; }
 body { background: #0d0d0d; color: #e0e0e0; font-family: Arial, sans-serif; font-size: 14px; min-height: 100vh; }
 
-/* -- Login -- */
-#login-screen { display: flex; align-items: center; justify-content: center; min-height: 100vh; }
-.login-box { background: #1a1a1a; border: 1px solid #2a2a2a; border-radius: 10px; padding: 40px; text-align: center; width: 340px; }
-.login-box h1 { font-size: 28px; color: #00e5ff; margin-bottom: 6px; letter-spacing: 1px; }
-.login-box p  { color: #666; font-size: 13px; margin-bottom: 24px; }
-.login-box input { width: 100%; padding: 12px; background: #111; border: 1px solid #333; border-radius: 6px; color: #e0e0e0; font-size: 14px; margin-bottom: 12px; text-align: center; letter-spacing: 2px; }
-.login-box input:focus { outline: none; border-color: #00e5ff; }
-.login-box button { width: 100%; padding: 12px; background: #00e5ff; color: #000; border: none; border-radius: 6px; font-size: 15px; font-weight: bold; cursor: pointer; }
-.login-box button:hover { background: #00c8e0; }
-.login-error { color: #ef5350; font-size: 12px; margin-top: 8px; display: none; }
-
 /* -- App shell -- */
-#app { display: none; }
+#app { display: block; }
 nav { background: #111; border-bottom: 1px solid #222; padding: 0 16px; display: flex; align-items: center; gap: 4px; overflow-x: auto; }
 nav .brand { font-size: 16px; font-weight: bold; color: #00e5ff; padding: 14px 16px 14px 0; margin-right: 8px; white-space: nowrap; border-right: 1px solid #222; }
 .nav-spacer { margin-left: auto; }
@@ -29,8 +18,6 @@ nav .brand { font-size: 16px; font-weight: bold; color: #00e5ff; padding: 14px 1
 .tab-btn:hover { color: #e0e0e0; }
 .tab-btn.active { color: #00e5ff; border-bottom-color: #00e5ff; }
 .tab-btn .badge { background: #00e5ff; color: #000; border-radius: 10px; padding: 1px 6px; font-size: 10px; font-weight: bold; margin-left: 4px; }
-.logout-btn { padding: 7px 12px; border-radius: 5px; border: 1px solid #444; background: #1a1a1a; color: #bbb; cursor: pointer; font-size: 12px; white-space: nowrap; margin-left: 8px; }
-.logout-btn:hover { border-color: #666; color: #fff; }
 
 .page { display: none; max-width: 860px; margin: 0 auto; padding: 24px 16px 60px; }
 .page.active { display: block; }
@@ -167,17 +154,6 @@ nav .brand { font-size: 16px; font-weight: bold; color: #00e5ff; padding: 14px 1
 </head>
 <body>
 
-<!-- Login -->
-<div id="login-screen">
-  <div class="login-box">
-    <h1>PolyEdge</h1>
-    <p>Polymarket Copy Trader</p>
-    <input type="password" id="access-input" placeholder="Enter access code" onkeydown="if(event.key==='Enter') doLogin()">
-    <button onclick="doLogin()">Unlock -></button>
-    <div class="login-error" id="login-error">Wrong access code</div>
-  </div>
-</div>
-
 <!-- App -->
 <div id="app">
   <nav>
@@ -190,7 +166,6 @@ nav .brand { font-size: 16px; font-weight: bold; color: #00e5ff; padding: 14px 1
     <button class="tab-btn" onclick="showTab('wallet-history')">Wallet History</button>
     <button class="tab-btn" onclick="showTab('how-to-use')">How To Use</button>
     <div class="nav-spacer"></div>
-    <button class="logout-btn" onclick="logoutApp()">Log Out</button>
   </nav>
 
   <!-- -- Copy Alerts -- -->
@@ -405,39 +380,10 @@ async function apiFetch(url, options = {}) {
   statusState.api = 'Reachable';
   updateStatusPanel();
   if (res.status === 401) {
-    document.getElementById('app').style.display = 'none';
-    document.getElementById('login-screen').style.display = 'flex';
-    document.getElementById('login-error').textContent = 'Please unlock PolyEdge again';
-    document.getElementById('login-error').style.display = 'block';
+    window.location.reload();
     throw new Error('Not authenticated');
   }
   return res;
-}
-
-// -- Auth ----------------------------------------------------------------------
-async function doLogin() {
-  const code = document.getElementById('access-input').value.trim();
-  const res  = await fetch('/api/auth', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({code}) });
-  const data = await res.json();
-  if (data.ok) {
-    document.getElementById('login-error').style.display = 'none';
-    document.getElementById('login-screen').style.display = 'none';
-    document.getElementById('app').style.display = 'block';
-    document.getElementById('access-input').value = '';
-    initApp();
-  } else {
-    document.getElementById('login-error').textContent = data.error || 'Wrong access code';
-    document.getElementById('login-error').style.display = 'block';
-  }
-}
-
-async function logoutApp() {
-  try {
-    await fetch('/api/logout', { method:'POST' });
-  } catch (e) {}
-  document.getElementById('app').style.display = 'none';
-  document.getElementById('login-screen').style.display = 'flex';
-  document.getElementById('login-error').style.display = 'none';
 }
 
 // -- Tabs ----------------------------------------------------------------------
@@ -470,6 +416,9 @@ function initApp() {
   setInterval(() => { if (currentTab === 'consensus')    loadConsensus(); }, 30000);
   setInterval(renderRefreshClocks, 1000);
 }
+
+// Desktop-local mode: launch directly into the app.
+initApp();
 
 function markRefreshed(key) {
   refreshTimes[key] = Date.now();
