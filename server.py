@@ -26,8 +26,55 @@ market_cache    = {}   # conditionId → {question, category}
 DATA_FILE = os.path.join(os.path.dirname(__file__), 'data.json')
 
 
+DEFAULT_TRADERS = [
+    '0x492442eab586f242b53bda933fd5de859c8a3782',
+    '0x02227b8f5a9636e895607edd3185ed6ee5598ff7',
+    '0x2a2c53bd278c04da9962fcf96490e17f3dfb9bc1',
+    '0xefbc5fec8d7b0acdc8911bdd9a98d6964308f9a2',
+    '0xc2e7800b5af46e6093872b177b7a5e7f0563be51',
+    '0x36a3f17401e395ef4cb1b7f42bcdb8ab8e15fafb',
+    '0x019782cab5d844f02bafb71f512758be78579f3c',
+    '0x2005d16a84ceefa912d4e380cd32e7ff827875ea',
+    '0x204f72f35326db932158cba6adff0b9a1da95e14',
+    '0xead152b855effa6b5b5837f53b24c0756830c76a',
+    '0xee613b3fc183ee44f9da9c05f53e2da107e3debf',
+    '0x37c1874a60d348903594a96703e0507c518fc53a',
+    '0x9495425feeb0c250accb89275c97587011b19a27',
+    '0x777d9f00c2b4f7b829c9de0049ca3e707db05143',
+    '0xdc876e6873772d38716fda7f2452a78d426d7ab6',
+    '0x9f2fe025f84839ca81dd8e0338892605702d2ca8',
+    '0xf195721ad850377c96cd634457c70cd9e8308057',
+    '0x59a0744db1f39ff3afccd175f80e6e8dfc239a09',
+    '0x8f037a2e4fd49d11267f4ab874ab7ba745ac64d6',
+    '0x6a72f61820b26b1fe4d956e17b6dc2a1ea3033ee',
+    '0x07bdcabf60da99be8fad11092bf4e8412cffe993',
+    '0x50b1db131a24a9d9450bbd0372a95d32ea88f076',
+    '0x0eb568f307e9a48af2c3e688ad6074236712c494',
+    '0x2eb10cb8596bf8c8ef409f72cfb5eb6438054ea4',
+    '0xbddf61af533ff524d27154e589d2d7a81510c684',
+    '0x54ac09857c3e76d50a2e7da064b0293d9a9e7c14',
+    '0xbaa2bcb5439e985ce4ccf815b4700027d1b92c73',
+    '0xdb27bf2ac5d428a9c63dbc914611036855a6c56e',
+    '0x5d58e38cd0a7e6f5fa67b7f9c2f70dd70df09a15',
+    '0x6480542954b70a674a74bd1a6015dec362dc8dc5',
+    '0xfe787d2da716d60e8acff57fb87eb13cd4d10319',
+    '0x507e52ef684ca2dd91f90a9d26d149dd3288beae',
+    '0x43e98f912cd6ddadaad88d3297e78c0648e688e5',
+    '0x9e9c8b080659b08c3474ea761790a20982e26421',
+    '0x2663daca3cecf3767ca1c3b126002a8578a8ed1f',
+    '0xd99f3bec8e060ada0aef0c4057695dd5bc22fcdc',
+    '0xc21ea96be762bb55041529af6e386e7c53b80215',
+    '0x2785e7022dc20757108204b13c08cea8613b70ae',
+    '0x5d189e816b4149be00977c1a3c8840374aec4972',
+    '0xc8ab97a9089a9ff7e6ef0688e6e591a066946418',
+    '0xeebde7a0e019a63e6b476eb425505b7b3e6eba30',
+    '0x4c2966a198cd7ac982110d0219b037afa9997570',
+    '0xb27bc932bf8110d8f78e55da7d5f0497a18b5b82',
+]
+
 def load_data():
     global saved_traders, telegram_config
+    # Load saved data first
     if os.path.exists(DATA_FILE):
         try:
             d = json.load(open(DATA_FILE))
@@ -35,6 +82,10 @@ def load_data():
             telegram_config = d.get('telegram', {})
         except Exception:
             pass
+    # Always ensure default traders are present
+    for address in DEFAULT_TRADERS:
+        if address not in saved_traders:
+            saved_traders[address] = {'name': '', 'added_at': '2025-01-01T00:00:00'}
 
 def save_data():
     with open(DATA_FILE, 'w') as f:
