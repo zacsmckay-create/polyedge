@@ -1,3 +1,4 @@
+<!-- V3 -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -390,7 +391,8 @@ function roiBadge(stats) {
   return `<span class="badge ${cls}">ROI ${roi > 0 ? '+' : ''}${roi}%</span>`;
 }
 
-function polyUrl(conditionId) {
+function polyUrl(slug, conditionId) {
+  if (slug) return `https://polymarket.com/event/${slug}`;
   return `https://polymarket.com/event/${conditionId}`;
 }
 
@@ -432,7 +434,7 @@ function renderAlerts() {
       : '<span class="badge badge-no">NO</span>';
     const chance = a.price ? Math.round(a.price * 100) + '% chance' : '';
     const betCls = a.side === 'YES' ? 'bet-yes' : 'bet-no';
-    const betUrl = a.condition_id ? polyUrl(a.condition_id) : 'https://polymarket.com';
+    const betUrl = a.condition_id ? `/go?id=${a.condition_id}` : 'https://polymarket.com';
     const wr     = a.stats?.win_rate != null ? ` · ${a.stats.win_rate}% WR` : '';
     return `
     <div class="alert-card">
@@ -623,7 +625,7 @@ function renderConsensus() {
     }).join('');
     const moreTag = remaining > 0 ? `<span class="trader-tag">+${remaining} more</span>` : '';
     const betCls = s.side === 'YES' ? 'bet-yes' : 'bet-no';
-    const betUrl = s.condition_id ? polyUrl(s.condition_id) : 'https://polymarket.com';
+    const betUrl = s.condition_id ? `/go?id=${s.condition_id}` : 'https://polymarket.com';
     return `
     <div class="consensus-signal">
       <div><span class="signal-strength ${sigCls}">${sigLbl} — ${s.wallet_count} wallets</span> ${sideBadge}</div>

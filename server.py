@@ -129,12 +129,14 @@ def get_market_info(condition_id):
                     cat = 'sports'
                 elif any(t in tags for t in ['politics', 'election', 'government', 'trump']):
                     cat = 'politics'
-                info = {'question': question, 'category': cat}
+                events = m.get('events', [])
+                slug = events[0].get('slug', '') if events else m.get('slug', '')
+                info = {'question': question, 'category': cat, 'slug': slug}
                 market_cache[condition_id] = info
                 return info
     except Exception:
         pass
-    return {'question': 'Unknown market', 'category': 'other'}
+    return {'question': 'Unknown market', 'category': 'other', 'slug': ''}
 
 
 def compute_stats(trades):
@@ -230,7 +232,28 @@ def send_telegram(token, chat_id, message):
 
 @app.route('/')
 def index():
-    return render_template('index.html')
+    from flask import make_response
+    import os
+    path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'templates', 'index.html')
+    with open(path, 'r', encoding='utf-8') as f:
+        html = f.read()
+    resp = make_response(html, 200)
+    resp.headers['Content-Type'] = 'text/html; charset=utf-8'
+    resp.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate'
+    return resp
+
+
+@app.route('/go')
+def go_to_market():
+    from flask import redirect
+    condition_id = request.args.get('id', '')
+    if not condition_id:
+        return redirect('https://polymarket.com')
+    market = get_market_info(condition_id)
+    slug = market.get('slug', '')
+    if slug:
+        return redirect(f'https://polymarket.com/event/{slug}')
+    return redirect('https://polymarket.com')
 
 
 @app.route('/api/auth', methods=['POST'])
@@ -257,15 +280,17 @@ def copy_alerts():
                 usd    = round(size * price, 2)
                 ts     = t.get('timestamp') or t.get('createdAt') or ''
                 alerts.append({
-                    'question':   market['question'],
-                    'category':   market['category'],
-                    'side':       side,
-                    'price':      price,
-                    'usd':        usd,
-                    'trader':     info.get('name', address[:10]),
-                    'address':    address,
-                    'timestamp':  ts,
-                    'stats':      stats_cache.get(address, {}),
+                    'question':     market['question'],
+                    'category':     market['category'],
+                    'slug':         market.get('slug', ''),
+                    'condition_id': condition_id,
+                    'side':         side,
+                    'price':        price,
+                    'usd':          usd,
+                    'trader':       info.get('name', address[:10]),
+                    'address':      address,
+                    'timestamp':    ts,
+                    'stats':        stats_cache.get(address, {}),
                 })
 
         # Sort newest first
@@ -379,6 +404,7 @@ def consensus():
             signals.append({
                 'question':    market['question'],
                 'category':    market['category'],
+                'slug':        market.get('slug', ''),
                 'side':        side,
                 'wallet_count': len(traders),
                 'combined_usd': round(combined_usd, 2),
