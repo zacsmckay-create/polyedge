@@ -1,0 +1,7 @@
+data.json
+access_code.txt
+.env
+__pycache__/
+*.pyc
+*.pyo
+*.log
